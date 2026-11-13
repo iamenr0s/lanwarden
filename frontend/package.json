@@ -13,7 +13,8 @@
   "overrides": {
     "@codecov/vite-plugin": {
       "vite": "$vite"
-    }
+    },
+    "zod": "^4.6.6"
   },
   "dependencies": {
     "qrcode-generator": "^2.0.4",
