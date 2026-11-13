@@ -7,14 +7,15 @@ coverage:
         threshold: 1%
       frontend:
         flags: [frontend]
-        informational: true # baseline is low (only lib/api/hooks and two components are tested); report, don't block
+        target: auto
+        threshold: 1%
     patch:
       backend:
         flags: [backend]
         target: 80%
       frontend:
         flags: [frontend]
-        informational: true
+        target: 80%
 flags:
   backend:
     paths: [backend/app]
