@@ -28,7 +28,13 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iproute2 ieee-data
       - run: pip install -r requirements-dev.txt
       - name: Tests (coverage floor 90%)
-        run: pytest -q --cov=app --cov-fail-under=90
+        run: pytest -q --cov=app --cov-report=xml --cov-fail-under=90
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: backend/coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false # a Codecov outage must not fail the build; the 90% floor above is the gate
       - name: Lint and security rules
         run: ruff check app tests --select F,E9,B,S,UP --ignore S101,S105,S106,S311,B008,UP017,UP042 --line-length 140
       - name: bandit (medium and above)
