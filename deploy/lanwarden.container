@@ -1,0 +1,37 @@
+# Podman Quadlet unit: runs LanWarden as a systemd service (rootful, so arp-scan works).
+#
+#   sudo podman build --format docker -t lanwarden:latest .
+#   sudo cp deploy/lanwarden.container /etc/containers/systemd/
+#   sudo systemctl daemon-reload && sudo systemctl start lanwarden
+#
+# Rootless variant: copy to ~/.config/containers/systemd/ and use `systemctl --user`;
+# discovery then relies on the neighbour table only (rootless cannot open raw sockets).
+[Unit]
+Description=LanWarden network monitor
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=localhost/lanwarden:latest
+ContainerName=lanwarden
+Network=host
+DropCapability=ALL
+AddCapability=NET_RAW
+ReadOnly=true
+Tmpfs=/tmp
+Volume=lanwarden-data:/data
+Environment=LANWARDEN_PORT=8080
+# Environment=LANWARDEN_SECURE_COOKIES=true
+#
+# Keep the encryption key out of the data volume (so a copy of the volume is not enough to read the secrets):
+#   head -c 48 /dev/urandom | base64 -w0 | sudo podman secret create lanwarden_key -
+# then uncomment, and optionally switch on whole-database encryption (see docs/SECRETS.md):
+# Secret=lanwarden_key,type=mount,target=/run/secrets/lanwarden_key,uid=10001,mode=0400
+# Environment=LANWARDEN_SECRET_KEY_FILE=/run/secrets/lanwarden_key
+# Environment=LANWARDEN_DB_ENCRYPTION=sqlcipher
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

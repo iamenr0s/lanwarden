@@ -1,0 +1,35 @@
+# Works with `docker compose`, `podman compose` and `podman-compose`.
+# No compose provider installed? Use scripts/run-container.sh (it falls back to plain `run`).
+services:
+  lanwarden:
+    build: .
+    image: lanwarden:latest
+    container_name: lanwarden
+    restart: unless-stopped
+    # Host networking: arp-scan only sees the LAN when it shares the host's network
+    # namespace. `ports:` is ignored in this mode; change LANWARDEN_PORT instead.
+    network_mode: host
+    environment:
+      LANWARDEN_PORT: "8080"
+      # Set to "true" when serving over HTTPS (reverse proxy) so the session cookie is Secure.
+      LANWARDEN_SECURE_COOKIES: "false"
+      # Optional hardening (set in your shell or an .env file next to this file):
+      LANWARDEN_SETUP_TOKEN: "${LANWARDEN_SETUP_TOKEN:-}"   # required on the first-run setup form when non-empty
+      FORWARDED_ALLOW_IPS: "${FORWARDED_ALLOW_IPS:-127.0.0.1}" # your reverse proxy's IP, so client IPs are real
+      LANWARDEN_REQUIRE_MFA: "${LANWARDEN_REQUIRE_MFA:-false}" # true = every account must enrol TOTP before using the app
+      LANWARDEN_TLS_MODE: "${LANWARDEN_TLS_MODE:-off}"       # selfsigned = built-in HTTPS with a generated certificate
+      LANWARDEN_TLS_NAMES: "${LANWARDEN_TLS_NAMES:-}"        # extra names/IPs for that certificate
+    volumes:
+      # Named volume: no host-directory ownership or SELinux relabelling to get right,
+      # on Docker or Podman. Back up with `docker|podman volume export lanwarden-data`.
+      - lanwarden-data:/data
+    # Least privilege: drop everything except raw sockets for arp-scan.
+    # (no-new-privileges is intentionally NOT set: it would stop the file capability on
+    # /usr/sbin/arp-scan from taking effect for the non-root user.)
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    read_only: true
+    tmpfs: [/tmp]
+
+volumes:
+  lanwarden-data:

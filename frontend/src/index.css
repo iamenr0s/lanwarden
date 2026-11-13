@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* class-based dark mode, as in v3's darkMode: "class" */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* status colours used consistently across the UI */
+@theme {
+  --color-online: #22c55e;
+  --color-offline: #6b7280;
+  --color-warn: #f59e0b;
+  --color-down: #ef4444;
+}
+
+/* v4 defaults borders to currentColor; keep v3's gray-200 */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+}

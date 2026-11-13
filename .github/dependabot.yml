@@ -1,0 +1,19 @@
+# Weekly pull requests for new versions. Actions are pinned by commit hash, so this is how they move.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    # Paired packages have peer deps on each other, so they must move in one PR.
+    groups:
+      react: { patterns: [react, react-dom, "@types/react", "@types/react-dom"] }
+      vite: { patterns: [vite, "@vitejs/plugin-react"] }

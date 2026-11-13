@@ -1,0 +1,8 @@
+-r requirements.in  # dev tools are version ranges; only the runtime set (requirements.txt) is hash-pinned
+pytest>=8
+pytest-cov>=5
+ruff>=0.6
+bandit>=1.7
+pip-audit>=2.7
+schemathesis>=4  # API fuzzing (tests/fuzz_api.py)
+uv>=0.5  # runs semgrep in its own Python 3.14 (semgrep-core segfaults on 3.15): scripts/security-scan.sh, CI
