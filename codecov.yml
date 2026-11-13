@@ -16,6 +16,30 @@ coverage:
       frontend:
         flags: [frontend]
         target: 80%
+# Components: coverage per area of the code, shown on the dashboard (tracked, not gated).
+component_management:
+  individual_components:
+    - component_id: backend_api
+      name: Backend API
+      paths: [backend/app/api/**, backend/app/schemas/**, backend/app/main.py, backend/app/__main__.py]
+    - component_id: backend_core
+      name: Backend core and data
+      paths: [backend/app/core/**, backend/app/db/**, backend/app/models/**]
+    - component_id: backend_scanning
+      name: Backend scanning and discovery
+      paths: [backend/app/discovery/**, backend/app/services/**]
+    - component_id: backend_integrations
+      name: Backend integrations and notifications
+      paths: [backend/app/integrations/**, backend/app/notifications/**]
+    - component_id: frontend_pages
+      name: Frontend pages
+      paths: [frontend/src/pages/**]
+    - component_id: frontend_components
+      name: Frontend components
+      paths: [frontend/src/components/**]
+    - component_id: frontend_core
+      name: Frontend app, API client and hooks
+      paths: [frontend/src/App.tsx, frontend/src/main.tsx, frontend/src/api/**, frontend/src/hooks/**, frontend/src/lib/**]
 flags:
   backend:
     paths: [backend/app]

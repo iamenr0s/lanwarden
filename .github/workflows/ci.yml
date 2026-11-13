@@ -28,7 +28,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iproute2 ieee-data
       - run: pip install -r requirements-dev.txt
       - name: Tests (coverage floor 90%)
-        run: pytest -q --cov=app --cov-report=xml --cov-fail-under=90
+        run: pytest -q --cov=app --cov-report=xml --cov-fail-under=90 --junitxml=junit.xml -o junit_family=legacy
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
@@ -36,6 +36,15 @@ jobs:
           flags: backend
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false # a Codecov outage must not fail the build; the 90% floor above is the gate
+      - name: Upload test results to Codecov (test analytics)
+        if: ${{ !cancelled() }} # failing runs are the interesting ones
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          report_type: test_results
+          files: backend/junit.xml
+          flags: backend
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
       - name: Lint and security rules
         run: ruff check app tests --select F,E9,B,S,UP --ignore S101,S105,S106,S311,B008,UP017,UP042 --line-length 140
       - name: bandit (medium and above)
@@ -71,12 +80,24 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run build # type-checks (tsc) and bundles
-      - run: npm run test:coverage
+      - name: Build (type-checks with tsc, bundles, uploads bundle stats to Codecov when the token is set)
+        run: npm run build
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} # empty on fork PRs: the plugin then stays off
+      - run: npm run test:coverage -- --reporter=default --reporter=junit --outputFile.junit=junit.xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: frontend/coverage/lcov.info
+          flags: frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+      - name: Upload test results to Codecov (test analytics)
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          report_type: test_results
+          files: frontend/junit.xml
           flags: frontend
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
