@@ -20,8 +20,6 @@
   <img alt="Trivy" src="https://img.shields.io/badge/scanned%20with-Trivy-1904DA?logo=aquasecurity&logoColor=white">
   <img alt="Semgrep" src="https://img.shields.io/badge/SAST-Semgrep-2DB1A0?logo=semgrep&logoColor=white">
   <a href="https://codecov.io/gh/iamenr0s/lanwarden"><img alt="Coverage" src="https://codecov.io/gh/iamenr0s/lanwarden/graph/badge.svg"></a>
-  <img alt="Bandit" src="https://img.shields.io/badge/Bandit-checked-yellow">
-  <img alt="Ruff" src="https://img.shields.io/badge/lint-Ruff-D7FF64?logo=ruff&logoColor=black">
   <img alt="gitleaks" src="https://img.shields.io/badge/secrets-gitleaks-blue">
   <a href="renovate.json"><img alt="Renovate" src="https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovate"></a>
 </p>
