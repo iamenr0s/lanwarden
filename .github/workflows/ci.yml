@@ -33,6 +33,7 @@ jobs:
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: backend/coverage.xml
+          flags: backend
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false # a Codecov outage must not fail the build; the 90% floor above is the gate
       - name: Lint and security rules
@@ -71,6 +72,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build # type-checks (tsc) and bundles
+      - run: npm run test:coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
       - run: npm audit --audit-level=moderate
 
   image:

@@ -1,8 +1,24 @@
 coverage:
   status:
     project:
-      default: { target: auto, threshold: 1% }
+      backend:
+        flags: [backend]
+        target: auto
+        threshold: 1%
+      frontend:
+        flags: [frontend]
+        informational: true # baseline is low (only lib/api/hooks and two components are tested); report, don't block
     patch:
-      default: { target: 80% }
+      backend:
+        flags: [backend]
+        target: 80%
+      frontend:
+        flags: [frontend]
+        informational: true
+flags:
+  backend:
+    paths: [backend/app]
+  frontend:
+    paths: [frontend/src]
 comment:
-  layout: "condensed_header, diff, files"
+  layout: "condensed_header, diff, flags, files"
