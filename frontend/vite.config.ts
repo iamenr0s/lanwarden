@@ -13,6 +13,13 @@ export default defineConfig({
     tailwindcss(),
     // Bundle analysis: only in a build that has the upload token (CI). Boolean() because an unset GitHub secret
     // arrives as an empty string, not undefined. Must stay last. Telemetry off, like semgrep's --metrics=off.
+    //
+    // package.json "overrides" exist only for this plugin (2.0.1, the latest; every @codecov package shares its core):
+    //  - "@codecov/vite-plugin".vite: it declares Vite 4-6 but works on our Vite 8 (checked: builds, stats upload).
+    //  - "zod": its core pins zod 3.x, which `npm audit` flags (GHSA-mrhx-c7xc-m3w5, fixed in 4.6.6); zod 4 still
+    //    validates its options and uploads fine.
+    // Remove both overrides once a newer plugin release supports Vite 8 and zod >= 4.6.6. If this ever breaks, CI's
+    // build step logs "[codecov] Successfully uploaded stats for bundle: ..." on success: look for that line.
     codecovVitePlugin({
       enableBundleAnalysis: Boolean(process.env.CODECOV_TOKEN),
       bundleName: "lanwarden-frontend",
