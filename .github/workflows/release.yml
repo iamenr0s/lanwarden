@@ -1,11 +1,12 @@
 name: Publish image
 
 # Pushing a tag such as v0.1.0 runs the full CI suite, then builds the multi-arch image and pushes it to
-# Docker Hub and Quay. "Run workflow" (workflow_dispatch) does everything except the push: a dry run.
+# Docker Hub and Quay. Pushing to the dev branch does the same but tags the image "dev". "Run workflow" (workflow_dispatch) does everything except the push: a dry run.
 
 on:
   push:
     tags: ["v*.*.*"]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:
@@ -31,7 +32,7 @@ jobs:
       contents: read
       id-token: write # keyless cosign signing (OIDC)
     env:
-      PUSH: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      PUSH: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/dev' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -62,7 +63,9 @@ jobs:
             ${{ env.DOCKERHUB_IMAGE }}
             ${{ env.QUAY_IMAGE }}
           # "latest" is added automatically for stable tags only (not v1.0.0-rc1)
+          # Pushes to the dev branch get the moving tag "dev" plus the sha tag; never "latest".
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
