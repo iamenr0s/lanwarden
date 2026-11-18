@@ -101,7 +101,8 @@ jobs:
           flags: frontend
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-      - run: npm audit --audit-level=moderate
+      # Gate on shipped deps only: dev tooling (vite/vitest) carries unpatched advisories, e.g. GHSA-fc5q-39xc-vjpf
+      - run: npm audit --omit=dev --audit-level=moderate
 
   image:
     runs-on: ubuntu-latest
