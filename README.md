@@ -12,7 +12,6 @@
   <img alt="Last commit" src="https://img.shields.io/github/last-commit/iamenr0s/lanwarden">
   <img alt="Stars" src="https://img.shields.io/github/stars/iamenr0s/lanwarden?style=flat">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-orange">
 </p>
 
 <p align="center">
@@ -21,7 +20,6 @@
   <img alt="Semgrep" src="https://img.shields.io/badge/SAST-Semgrep-2DB1A0?logo=semgrep&logoColor=white">
   <a href="https://codecov.io/gh/iamenr0s/lanwarden"><img alt="Coverage" src="https://codecov.io/gh/iamenr0s/lanwarden/graph/badge.svg"></a>
   <a href="https://www.codefactor.io/repository/github/iamenr0s/lanwarden"><img alt="CodeFactor" src="https://www.codefactor.io/repository/github/iamenr0s/lanwarden/badge"></a>
-  <img alt="gitleaks" src="https://img.shields.io/badge/secrets-gitleaks-blue">
   <a href="renovate.json"><img alt="Renovate" src="https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovate"></a>
 </p>
 
