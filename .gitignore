@@ -16,3 +16,4 @@ data/
 *.db-shm
 .env
 .codegraph/
+.claude/settings.local.json
