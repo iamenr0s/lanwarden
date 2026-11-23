@@ -27,14 +27,16 @@ def device_intel(client: AdGuardClient, device: Device) -> DeviceAdGuard:
     items = [i for i in (client.querylog(limit=SAMPLE, search=ip).get("data") or []) if i.get("client") == ip]
     out.sample_size = len(items)
     blocked = lambda i: str(i.get("reason", "")).startswith("Filtered")  # noqa: E731  (FilteringReason enum)
+    # unicode_name is the readable form of an internationalized (xn--) name
+    domain = lambda i: (i.get("question") or {}).get("unicode_name") or (i.get("question") or {}).get("name")  # noqa: E731
     out.sample_blocked = sum(1 for i in items if blocked(i))
     out.last_query = parse_time(items[0].get("time")) if items else None
     out.top_domains = [
         AdGuardDomainCount(domain=d, count=n)
-        for d, n in Counter((i.get("question") or {}).get("name") for i in items if (i.get("question") or {}).get("name")).most_common(10)
+        for d, n in Counter(domain(i) for i in items if domain(i)).most_common(10)
     ]
     out.recent = [
-        AdGuardQuery(time=parse_time(i.get("time")), domain=(i.get("question") or {}).get("name") or "?",
+        AdGuardQuery(time=parse_time(i.get("time")), domain=domain(i) or "?",
                      type=(i.get("question") or {}).get("type"), blocked=blocked(i), reason=i.get("reason") or None)
         for i in items[:RECENT]
     ]

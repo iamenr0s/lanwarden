@@ -1,4 +1,5 @@
 from datetime import timedelta
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -11,8 +12,9 @@ from app.integrations.adguard import AdGuardClient, AdGuardConfig, AdGuardError
 from app.models import Device, Event
 from app.models.system import Setting
 from app.schemas.settings import ScannerSettings
+from app.services.adguard_device import device_intel
 from app.services.netinfo import DetectedNetwork
-from tests.adguard_mock import CONFIG, PASSWORD, FakeAdGuard, install, query
+from tests.adguard_mock import CONFIG, PASSWORD, STATUS, FakeAdGuard, install, iso, query
 
 CFG = AdGuardConfig(url="http://192.168.0.2:3000", username="admin", password=PASSWORD, timeout_seconds=5)
 LAN = [DetectedNetwork("eth0", "192.168.0.0/24")]
@@ -138,6 +140,36 @@ def test_provider_tolerates_one_failing_endpoint_but_not_all():
     assert r.error is None and [o.source for o in r.observations] == ["adguard_querylog"]
     fake = FakeAdGuard({"GET /dhcp/status": (500, {}), "GET /clients": (500, {}), "GET /querylog": (500, {})})
     assert "could not be read" in provider(fake).scan(ctx()).error
+
+
+def test_provider_pages_query_log_back_to_window_start():
+    now = utcnow()
+    pages = {  # older_than -> page; the 3rd page is past the window and must not be fetched
+        None: {"data": [query("192.168.0.20", "a.com", ago=5)], "oldest": iso(now - timedelta(seconds=5))},
+        iso(now - timedelta(seconds=5)): {"data": [query("192.168.0.21", "b.com", ago=200)], "oldest": iso(now - timedelta(seconds=900))},
+        iso(now - timedelta(seconds=900)): {"data": [query("192.168.0.22", "c.com", ago=1000)], "oldest": ""},
+    }
+    fake = FakeAdGuard({"GET /querylog": lambda req: (200, pages[req.url.params.get("older_than")])})
+    r = provider(fake).scan(ctx())
+    assert sorted(o.ip for o in r.observations if o.source == "adguard_querylog") == ["192.168.0.20", "192.168.0.21"]
+    assert sum(req.url.path.endswith("/querylog") for req in fake.requests) == 2
+
+
+def test_provider_skips_dhcp_when_adguard_has_none():
+    fake = FakeAdGuard({"GET /status": (200, {**STATUS, "dhcp_available": False}), "GET /dhcp/status": (500, {})})
+    assert provider(fake).scan(ctx()).error is None
+    assert not any(req.url.path.endswith("/dhcp/status") for req in fake.requests)
+    fake.routes.update({"GET /clients": (500, {}), "GET /querylog": (500, {})})
+    assert provider(fake).scan(ctx()).error == "AdGuard Home is reachable but clients, querylog could not be read"
+
+
+def test_device_intel_prefers_unicode_domain_names():
+    item = {**query("192.168.0.20", "xn--d1abbgf6aiiy.xn--p1ai"), "question": {
+        "name": "xn--d1abbgf6aiiy.xn--p1ai", "unicode_name": "президент.рф", "type": "A"}}
+    fake = FakeAdGuard({"GET /querylog": (200, {"data": [item, query("192.168.0.20", "a.com")]})})
+    with fake.factory()(CFG) as client:
+        d = device_intel(client, SimpleNamespace(current_ip="192.168.0.20", mac_address=None))
+    assert [q.domain for q in d.recent] == ["президент.рф", "a.com"]
 
 
 # ---- settings / connection API ------------------------------------------------------------

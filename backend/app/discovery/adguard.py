@@ -29,6 +29,7 @@ from app.schemas.settings import ScannerSettings
 
 log = logging.getLogger("lanwarden.adguard")
 QUERYLOG_LIMIT = 500
+QUERYLOG_PAGES = 10  # shortcut: reads at most 5000 queries per scan window; raise it if a network outruns that
 _FRACTION = re.compile(r"(\.\d{6})\d+")
 
 
@@ -102,6 +103,23 @@ def querylog_observations(log_doc: dict, since: datetime, allowed: Callable[[str
     return list(seen.values())
 
 
+def recent_querylog(client: AdGuardClient, since: datetime) -> dict:
+    """Query log entries back to `since`, paging with `oldest`, so a busy network does not hide early queries."""
+    data: list[dict] = []
+    older_than = None
+    for _ in range(QUERYLOG_PAGES):
+        page = client.querylog(limit=QUERYLOG_LIMIT, older_than=older_than)
+        items = page.get("data") or []
+        data += items
+        older_than = page.get("oldest")
+        oldest = parse_time(older_than)
+        if not items or oldest is None or oldest < since:
+            break
+    else:
+        log.warning("AdGuard query log: read %d pages without reaching the scan window start", QUERYLOG_PAGES)
+    return {"data": data}
+
+
 class AdGuardProvider(DiscoveryProvider):
     name = "adguard"
 
@@ -123,12 +141,13 @@ class AdGuardProvider(DiscoveryProvider):
         allowed = (lambda ip: any(ipaddress.IPv4Address(ip) in n for n in targets)) if targets else (lambda ip: True)
         try:
             with self._factory(ctx.adguard) as client:
-                client.status()  # connectivity + credentials; failure here fails the whole provider
-                steps = (
-                    ("dhcp", lambda: dhcp_observations(client.dhcp_status(), now)),
+                status = client.status()  # connectivity + credentials; failure here fails the whole provider
+                steps = [
                     ("clients", lambda: client_observations(client.clients())),
-                    ("querylog", lambda: querylog_observations(client.querylog(limit=QUERYLOG_LIMIT), now - window, allowed)),
-                )
+                    ("querylog", lambda: querylog_observations(recent_querylog(client, now - window), now - window, allowed)),
+                ]
+                if status.get("dhcp_available") is not False:  # absent on older versions: try anyway
+                    steps.insert(0, ("dhcp", lambda: dhcp_observations(client.dhcp_status(), now)))
                 observations, failed = [], []
                 for label, step in steps:
                     try:
@@ -139,5 +158,5 @@ class AdGuardProvider(DiscoveryProvider):
         except AdGuardError as e:
             return ProviderResult(error=f"AdGuard Home: {e.message}")
         if len(failed) == len(steps):
-            return ProviderResult(error="AdGuard Home is reachable but DHCP, clients and query log could not be read")
+            return ProviderResult(error=f"AdGuard Home is reachable but {', '.join(failed)} could not be read")
         return ProviderResult(observations)

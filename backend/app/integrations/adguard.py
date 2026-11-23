@@ -94,11 +94,14 @@ class AdGuardClient:
     def clients_search(self, ids: list[str]) -> list[dict]:
         return self._request("POST", "/clients/search", json={"clients": [{"id": i} for i in ids]})
 
-    # GET /querylog?limit&search -> {data[{client, client_info{name}, question{name,type}, reason, time}]}
-    def querylog(self, limit: int = 100, search: str | None = None) -> dict:
+    # GET /querylog?limit&search&older_than -> {oldest, data[{client, client_info{name}, question{name,unicode_name,type}, reason, time}]}
+    # Newest first; pass a page's `oldest` as `older_than` to get the next page.
+    def querylog(self, limit: int = 100, search: str | None = None, older_than: str | None = None) -> dict:
         params: dict[str, Any] = {"limit": limit}
         if search:
             params["search"] = search
+        if older_than:
+            params["older_than"] = older_than
         return self._request("GET", "/querylog", params=params)
 
     # GET /stats -> {num_dns_queries, num_blocked_filtering, top_clients[{ip: count}], ...}
