@@ -32,6 +32,49 @@ function ServerFacts({ s }: { s: AdGuardServer }) {
   );
 }
 
+function StatusCard({ h }: { h: AdGuardHealth | null }) {
+  return (
+    <Card title="Connection status">
+      {!h ? (
+        <Loading />
+      ) : !h.configured ? (
+        <p className="text-sm text-slate-500">
+          Not configured yet. LanWarden works without it; AdGuard adds DHCP names, DNS activity and per-device DNS history.
+        </p>
+      ) : h.reachable && h.server ? (
+        <div className="space-y-3">
+          <p className="text-sm"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-online" aria-hidden />Reachable</p>
+          <ServerFacts s={h.server} />
+        </div>
+      ) : (
+        <ErrorBox message={`Unreachable: ${h.error?.message ?? "unknown error"}`} />
+      )}
+    </Card>
+  );
+}
+
+function TestResultCard({ result }: { result: AdGuardTestResult }) {
+  return (
+    <Card title="Test result">
+      {result.ok && result.server ? (
+        <div className="space-y-3">
+          <p role="status" className="text-sm font-medium text-online">Connection successful</p>
+          <ServerFacts s={result.server} />
+          <p className="text-sm text-slate-500">
+            {result.dhcp_enabled === null ? "DHCP info unavailable" : `DHCP ${result.dhcp_enabled ? "enabled" : "disabled"}, ${result.dhcp_leases ?? 0} leases`}
+            {result.configured_clients !== null && ` · ${result.configured_clients} configured clients`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <ErrorBox message={result.error?.message ?? "Connection failed"} />
+          {result.error && KIND_HELP[result.error.kind] && <p className="text-sm text-slate-500">{KIND_HELP[result.error.kind]}</p>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function AdGuard() {
   const config = useApi<AdGuardConfig>("/integrations/adguard");
   const health = useApi<AdGuardHealth>("/integrations/adguard/status");
@@ -91,27 +134,11 @@ export default function AdGuard() {
     }
   };
 
-  const h = health.data;
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">AdGuard Home</h1>
 
-      <Card title="Connection status">
-        {!h ? (
-          <Loading />
-        ) : !h.configured ? (
-          <p className="text-sm text-slate-500">
-            Not configured yet. LanWarden works without it; AdGuard adds DHCP names, DNS activity and per-device DNS history.
-          </p>
-        ) : h.reachable && h.server ? (
-          <div className="space-y-3">
-            <p className="text-sm"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-online" aria-hidden />Reachable</p>
-            <ServerFacts s={h.server} />
-          </div>
-        ) : (
-          <ErrorBox message={`Unreachable: ${h.error?.message ?? "unknown error"}`} />
-        )}
-      </Card>
+      <StatusCard h={health.data} />
 
       <form onSubmit={save} className="space-y-5">
         <Card title="Integration settings">
@@ -156,25 +183,7 @@ export default function AdGuard() {
         </div>
       </form>
 
-      {result && (
-        <Card title="Test result">
-          {result.ok && result.server ? (
-            <div className="space-y-3">
-              <p role="status" className="text-sm font-medium text-online">Connection successful</p>
-              <ServerFacts s={result.server} />
-              <p className="text-sm text-slate-500">
-                {result.dhcp_enabled === null ? "DHCP info unavailable" : `DHCP ${result.dhcp_enabled ? "enabled" : "disabled"}, ${result.dhcp_leases ?? 0} leases`}
-                {result.configured_clients !== null && ` · ${result.configured_clients} configured clients`}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <ErrorBox message={result.error?.message ?? "Connection failed"} />
-              {result.error && KIND_HELP[result.error.kind] && <p className="text-sm text-slate-500">{KIND_HELP[result.error.kind]}</p>}
-            </div>
-          )}
-        </Card>
-      )}
+      {result && <TestResultCard result={result} />}
     </div>
   );
 }

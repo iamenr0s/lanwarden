@@ -19,7 +19,7 @@ def main(dest: str) -> None:
     for name, path in FILES.items():
         try:
             req = urllib.request.Request(f"{BASE}/{path}", headers={"User-Agent": "lanwarden-build"})  # noqa: S310  (fixed https URL)
-            with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310  (fixed https URL)
+            with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310  (fixed https URL)  # nosec B310
                 data = r.read(32 * 1024 * 1024)
             if not data.lstrip(b"\xef\xbb\xbf").startswith(HEADER) or len(data) < 100_000:
                 raise ValueError("unexpected content")

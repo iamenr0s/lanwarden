@@ -67,6 +67,72 @@ function toBody(f: Form) {
   return { name: f.name, provider: f.provider, event_types: f.events, enabled: f.enabled, config };
 }
 
+type SetField = <K extends keyof Form>(k: K, v: Form[K]) => void;
+
+function ProviderFields({ form, set, secretSet, urlHint }: { form: Form; set: SetField; secretSet: (key: string) => boolean; urlHint: string }) {
+  return form.provider === "email" ? (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Host"><input className={inputCls} value={form.host} onChange={(e) => set("host", e.target.value)} required placeholder="smtp.example.com" /></Field>
+      <Field label="Port"><input className={inputCls} type="number" min={1} max={65535} value={form.port} onChange={(e) => set("port", Number(e.target.value))} /></Field>
+      <Field label="Security">
+        <select className={inputCls} value={form.security} onChange={(e) => set("security", e.target.value as Form["security"])}>
+          <option value="starttls">STARTTLS (587)</option>
+          <option value="ssl">SSL/TLS (465)</option>
+          <option value="none">None (not recommended)</option>
+        </select>
+      </Field>
+      <Field label="Username"><input className={inputCls} value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" /></Field>
+      <Field label="Password" hint={secretSet("password") ? "A password is stored. Leave empty to keep it." : undefined}>
+        <input className={inputCls} type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" />
+      </Field>
+      <Field label="From address"><input className={inputCls} type="email" value={form.from_addr} onChange={(e) => set("from_addr", e.target.value)} required /></Field>
+      <div className="sm:col-span-2">
+        <Field label="To" hint="One or more addresses, comma separated">
+          <input className={inputCls} value={form.to_addrs} onChange={(e) => set("to_addrs", e.target.value)} required />
+        </Field>
+      </div>
+    </div>
+  ) : (
+    <div className="grid gap-4">
+      <Field
+        label="URL"
+        hint={secretSet("url") ? `Stored encrypted (${urlHint}). Leave empty to keep it.` : "Receives a JSON POST: {source, title, text, events[]}. Stored encrypted: webhook URLs usually carry a token."}
+      >
+        <input className={inputCls} type="password" value={form.url} onChange={(e) => set("url", e.target.value)} required={!secretSet("url")} autoComplete="off" placeholder={secretSet("url") ? "unchanged" : "https://example.com/hook"} />
+      </Field>
+      <Field
+        label="Signing secret (optional)"
+        hint={secretSet("secret") ? "A secret is stored. Leave empty to keep it." : "Adds an X-LanWarden-Signature: sha256=… HMAC header"}
+      >
+        <input className={inputCls} type="password" value={form.secret} onChange={(e) => set("secret", e.target.value)} autoComplete="new-password" />
+      </Field>
+    </div>
+  );
+}
+
+function DeliveriesCard({ data }: { data: Delivery[] | null }) {
+  return (
+    <Card title="Recent deliveries">
+      {!data ? <Loading /> : data.length === 0 ? (
+        <p className="text-sm text-slate-500">Nothing sent since the server started.</p>
+      ) : (
+        <ul className="divide-y divide-slate-200 text-sm dark:divide-slate-800">
+          {data.map((d) => (
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>
+                <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${d.ok ? "bg-online" : "bg-down"}`} aria-label={d.ok ? "Sent" : "Failed"} role="img" />
+                {d.rule_name} <span className="text-slate-500">· {d.events === 0 ? "test" : `${d.events} event${d.events === 1 ? "" : "s"}`}</span>
+                {d.error && <span className="ml-2 text-red-600 dark:text-red-400">{d.error}</span>}
+              </span>
+              <span className="text-slate-500">{timeAgo(d.time)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
 export default function Notifications() {
   const rules = useApi<NotificationRule[]>("/notifications/rules");
   const deliveries = useApi<Delivery[]>("/notifications/deliveries");
@@ -160,44 +226,7 @@ export default function Notifications() {
           </Card>
 
           <Card title={form.provider === "email" ? "SMTP server" : "Webhook"}>
-            {form.provider === "email" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Host"><input className={inputCls} value={form.host} onChange={(e) => set("host", e.target.value)} required placeholder="smtp.example.com" /></Field>
-                <Field label="Port"><input className={inputCls} type="number" min={1} max={65535} value={form.port} onChange={(e) => set("port", Number(e.target.value))} /></Field>
-                <Field label="Security">
-                  <select className={inputCls} value={form.security} onChange={(e) => set("security", e.target.value as Form["security"])}>
-                    <option value="starttls">STARTTLS (587)</option>
-                    <option value="ssl">SSL/TLS (465)</option>
-                    <option value="none">None (not recommended)</option>
-                  </select>
-                </Field>
-                <Field label="Username"><input className={inputCls} value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" /></Field>
-                <Field label="Password" hint={secretSet("password") ? "A password is stored. Leave empty to keep it." : undefined}>
-                  <input className={inputCls} type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" />
-                </Field>
-                <Field label="From address"><input className={inputCls} type="email" value={form.from_addr} onChange={(e) => set("from_addr", e.target.value)} required /></Field>
-                <div className="sm:col-span-2">
-                  <Field label="To" hint="One or more addresses, comma separated">
-                    <input className={inputCls} value={form.to_addrs} onChange={(e) => set("to_addrs", e.target.value)} required />
-                  </Field>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                <Field
-                  label="URL"
-                  hint={secretSet("url") ? `Stored encrypted (${String(editing?.config.url_hint ?? "")}). Leave empty to keep it.` : "Receives a JSON POST: {source, title, text, events[]}. Stored encrypted: webhook URLs usually carry a token."}
-                >
-                  <input className={inputCls} type="password" value={form.url} onChange={(e) => set("url", e.target.value)} required={!secretSet("url")} autoComplete="off" placeholder={secretSet("url") ? "unchanged" : "https://example.com/hook"} />
-                </Field>
-                <Field
-                  label="Signing secret (optional)"
-                  hint={secretSet("secret") ? "A secret is stored. Leave empty to keep it." : "Adds an X-LanWarden-Signature: sha256=… HMAC header"}
-                >
-                  <input className={inputCls} type="password" value={form.secret} onChange={(e) => set("secret", e.target.value)} autoComplete="new-password" />
-                </Field>
-              </div>
-            )}
+            <ProviderFields form={form} set={set} secretSet={secretSet} urlHint={String(editing?.config.url_hint ?? "")} />
             <div className="mt-4"><Toggle label="Verify TLS certificate" checked={form.verify_tls} onChange={(v) => set("verify_tls", v)} /></div>
             <p className="mt-3 text-xs text-slate-500">Secrets are encrypted on the server and never sent back to the browser.</p>
           </Card>
@@ -240,24 +269,7 @@ export default function Notifications() {
         )}
       </Card>
 
-      <Card title="Recent deliveries">
-        {!deliveries.data ? <Loading /> : deliveries.data.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing sent since the server started.</p>
-        ) : (
-          <ul className="divide-y divide-slate-200 text-sm dark:divide-slate-800">
-            {deliveries.data.map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span>
-                  <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${d.ok ? "bg-online" : "bg-down"}`} aria-label={d.ok ? "Sent" : "Failed"} role="img" />
-                  {d.rule_name} <span className="text-slate-500">· {d.events === 0 ? "test" : `${d.events} event${d.events === 1 ? "" : "s"}`}</span>
-                  {d.error && <span className="ml-2 text-red-600 dark:text-red-400">{d.error}</span>}
-                </span>
-                <span className="text-slate-500">{timeAgo(d.time)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <DeliveriesCard data={deliveries.data} />
     </div>
   );
 }
